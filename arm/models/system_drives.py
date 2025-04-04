@@ -1,6 +1,9 @@
 import logging
 import os
 
+# New?
+import subprocess
+
 import pyudev
 
 from arm.ui import db
@@ -61,27 +64,29 @@ class SystemDrives(db.Model):
         # eject drive (not implemented, as job.eject() declared in a lot of places)
         # self.open_close()
 
-    def open_close(self):
-        """Open or Close the drive"""
+def is_tray_open(mount):
+    """Check if the drive tray is open."""
+    result = subprocess.run(["eject", "-T", mount], capture_output=True, text=True)
+    return "open" in result.stdout.lower()    
+
+def open_close(self):
+    """Open or Close the drive safely"""
+    try:
+        # Check actual tray state
+        self.open = is_tray_open(self.mount)
+
         if self.open:
-            # If open, then close the drive
-            try:
-                os.system("eject -tv " + self.mount)
-                self.open = False
-            except Exception as error:
-                logging.debug(f"{self.mount} unable to be closed {error}")
+            logging.debug(f"{self.mount} is open, attempting to close it.")
+            os.system("eject -tv " + self.mount)
+            self.open = False
         else:
-            # if closed, open/eject the drive
             if self.job_id_current:
                 logging.debug(f"{self.mount} unable to eject - current job [{self.job_id_current}] is in progress.")
             else:
-                try:
-                    # eject the drive
-                    # eject returns 0 for successful, 1 for failure
-                    if not bool(os.system("eject -v " + self.mount)):
-                        logging.debug(f"Ejected disc {self.mount}")
-                    else:
-                        logging.debug(f"Failed to eject {self.mount}")
+                if not bool(os.system("eject -v " + self.mount)):
+                    logging.debug(f"Ejected disc {self.mount}")
                     self.open = True
-                except Exception as error:
-                    logging.debug(f"{self.mount} couldn't be ejected {error}")
+                else:
+                    logging.debug(f"Failed to eject {self.mount}")
+    except Exception as error:
+        logging.debug(f"{self.mount} encountered an error: {error}")
