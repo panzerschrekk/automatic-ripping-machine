@@ -80,8 +80,6 @@ class SystemDrives(db.Model):
                     # eject returns 0 for successful, 1 for failure
                     if not bool(os.system("eject -v " + self.mount)):
                         logging.debug(f"Ejected disc {self.mount}")
-                        # to check if ejected
-                        touch "$LOCKFILE"
                     else:
                         logging.debug(f"Failed to eject {self.mount}")
                     self.open = True
