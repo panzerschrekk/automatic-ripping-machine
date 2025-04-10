@@ -4,6 +4,7 @@ DEVNAME=$1
 ARMLOG="/home/arm/logs/arm.log"
 echo "[ARM] Entering docker wrapper" | logger -t ARM -s
 echo "$(date) Entering docker wrapper" >> $ARMLOG
+LOCKFILE="/tmp/arm_eject_lock"
 
 #######################################################################################
 # YAML Parser to read Config
@@ -61,7 +62,13 @@ else
 	  echo "[ARM] Not CD, Blu-ray, DVD or Data. Bailing out on ${DEVNAME}" | logger -t ARM -s
 	  echo "$(date) [ARM] Not CD, Blu-ray, DVD or Data. Bailing out on ${DEVNAME}" >> $ARMLOG
       if [ "$CONFIG_UNIDENTIFIED_EJECT" != "false" ]; then
-	    eject "${DEVNAME}"
+      # Check if lockfile exists
+      	if [ -f "$LOCKFILE" ]; then
+		echo "Lockfile exists, skipping eject to prevent loop." | logger -t ARM -s
+	    	exit
+	else
+     		eject "${DEVNAME}"
+	fi
       fi
 	  exit #bail out
 fi
